@@ -1,37 +1,54 @@
-from sklearn import naive_bayes
-import pandas as pd
-from sklearn.model_selection import cross_val_score, RepeatedStratifiedKFold
-from sklearn import metrics
-def read_csv(csv_path):
-    csv_file = pd.read_csv(csv_path, sep=",")
-    csv_lst = csv_file.values.tolist()
-    return csv_lst
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import RandomizedSearchCV, KFold
+from sklearn.naive_bayes import GaussianNB
+import numpy as np
+
+from functions_module import get_csvs, read_csv, get_x_y_lsts
 
 
-def get_x_y_lsts(dataset_path):
-    csv_lst = read_csv(dataset_path)
-    X = []
-    Y = []
-    features_number = len(csv_lst[0]) - 1
-    for row in csv_lst:
-        row_features = []
-        for i in range(features_number):
-            row_features.append(row[i])
-        X.append(row_features)
-        Y.append(row[-1])
-    return X, Y
+def get_gnb_hyper_parameters(x, y):
+    gnb = GaussianNB()
+    params_NB = {'var_smoothing': np.logspace(0, -9, num=100)}
+    rand_search = RandomizedSearchCV(gnb, params_NB, cv=3)
+    results = rand_search.fit(x, y)
+    return results.best_params_
 
 
-def get_cross_val_naive_bayes(X, Y, cv,metric):
-    gnb = naive_bayes.GaussianNB()
-    scores = cross_val_score(gnb, X, Y, cv=cv,scoring=metric)
-    return scores
+def get_best_gnb(x, y):
+    hyper_parameters = get_gnb_hyper_parameters(x, y)
+    gnb = GaussianNB(var_smoothing=hyper_parameters.get("var_smoothing"))
+    return gnb
 
-#Accuracy->
-# --------main----------
-#print(read_csv("datasets/arrhythmia.csv"))
-X,Y=get_x_y_lsts("datasets/arrhythmia.csv")
-cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+def get_metrics(x, y):
+    kf = KFold(n_splits=10)
+    accuracy=[]
+    tpr=[]
+    fpr=[]
+    precision=[]
+    auc_roc_curve=[]
+    auc_precision_recall=[]
+    training_time=[]
+    inference_time=[]
 
-print(get_cross_val_naive_bayes(X,Y,cv,'accuracy'))
-print(metrics.SCORERS.keys())
+
+    x_train = []
+    x_test = []
+    y_train = []
+    y_test = []
+    for train_index, test_index in kf.split(x):
+        x_train = [x[i] for i in train_index]
+        x_test = [x[i] for i in test_index]
+        y_train = [y[i] for i in train_index]
+        y_test = [y[i] for i in test_index]
+        gnb=get_best_gnb(x,y)
+        gnb.fit(x_train,y_train)
+        y_prediction=gnb.predict(x_test)
+
+
+
+
+csvs = get_csvs()
+for csv in csvs:
+    csv_lst = read_csv(csv)
+    x, y = get_x_y_lsts(csv)
+    get_metrics(x,y)
