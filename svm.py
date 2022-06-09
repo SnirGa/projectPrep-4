@@ -11,9 +11,11 @@ import time
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+import functions_module
+
 
 def get_x_y_lsts(dataset_path):
-    csv_lst = pd.read_csv(dataset_path)
+    csv_lst = functions_module.read_csv(dataset_path)
     X = []
     Y = []
     features_number = len(csv_lst[0]) - 1 #???????
