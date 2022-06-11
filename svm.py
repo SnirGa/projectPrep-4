@@ -1,11 +1,8 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-from numpy import mean
-from numpy import std
+import statistics
 from os import listdir
 from os.path import isfile, join
 from sklearn import svm
-from sklearn.metrics import make_scorer, auc
+from sklearn.metrics import make_scorer, auc, confusion_matrix
 from sklearn.model_selection import cross_val_score, cross_validate
 from sklearn.model_selection import KFold
 from sklearn.model_selection import RandomizedSearchCV
@@ -13,75 +10,215 @@ from sklearn import metrics
 import time
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from functions_module import get_csvs, read_csv, get_x_y_lsts
 
-import functions_module
-roc_curve_scorer = make_scorer(metrics.roc_curve)
-average_precision_scorer = make_scorer(metrics.average_precision_score)
-# roc_auc_score_scorer = make_scorer(metrics.roc_auc_score(multi_class="ovr", average="weighted"))
-scoring = {"accuracy": "accuracy","precision_micro": "precision_micro","roc_auc_score_ovr": "roc_auc_score_ovr", "roc_curve_ovr": roc_curve_scorer, "average_precision": average_precision_scorer}
+#get hyperparameters of the model
+def get_svm_hyper_parameters(x, y):
+    model = svm.SVC()
+    params = dict() #Params to optimize
+    params['C'] = [1, 1.5, 2, 2.5, 3]
+    params['kernel'] = ["linear", "poly", "rbf", "sigmoid",]
+    rand_search = RandomizedSearchCV(model, params, cv=3)
+    results = rand_search.fit(x, y)
+    return results.best_params_
 
-def get_x_y_lsts(dataset_path):
-    csv_lst = functions_module.read_csv(dataset_path)
-    X = []
-    Y = []
-    features_number = len(csv_lst[0]) - 1
-    for row in csv_lst:
-        row_features = []
-        for i in range(features_number):
-            row_features.append(row[i])
-        X.append(row_features)
-        Y.append(row[-1])
-    return X, Y
+#get the best model of the SVM to fit
+def get_best_svm(x, y):
+    hyper_parameters = get_svm_hyper_parameters(x, y)
+    model = svm.SVC(C=hyper_parameters.get("C"),kernel=hyper_parameters.get("kernel"))
+    return model
 
-datasets = ["datasets/"+f for f in listdir("datasets") if isfile(join("datasets", f))]
-cv_outer = KFold(n_splits=10, shuffle=True)
-outer_results = list()
-for data in datasets:
-    X, Y = get_x_y_lsts(data)
-    # ---- configure the cross-validation procedure ----
-    cv_inner = KFold(n_splits=10, shuffle=True, random_state=1)
-    # ---- define the SVM model ----
-    # Support Vector Machine algorithms are not scale invariant, so it is highly recommended to scale the data.
-    # Standardize features by removing the mean and scaling to unit variance.
-    model = make_pipeline(StandardScaler(), svm.SVC())
-    # ---- define search parmas for hyperparameter optimization ----
-    params = dict()
-    params['svc__C'] = [1, 1.5, 2, 2.5, 3]
-    params['svc__kernel'] = ["linear", "poly", "rbf", "sigmoid", "precomputed"]
-    # ---- define search ----
-    search = RandomizedSearchCV(model, params, scoring=scoring, n_jobs=1, cv=cv_inner, refit='accuracy', random_state=42)
-    # ---- execute the outer nested cross-validation ----
-    # scores = cross_validate(search, X, Y, scoring= scoring, cv=cv_outer, n_jobs=-1)
-    # ---- Training Time metric ----
-    start = time.time()
-    # execute search
-    result = search.fit(X, Y)
-    stop = time.time()
-    training_time = stop - start
-    # get the best performing model fit on the whole training set
-    best_model = result.best_estimator_
-    # evaluate model on the hold out dataset
-    yhat = best_model.predict(X)
-    # evaluate the model
-    acc = metrics.accuracy_score(Y, yhat)
-    FPR, TPR, _ = metrics.roc_curve(Y, yhat)
-    Precision = metrics.precision_score(Y, yhat,average='micro')
-    AUC_ROC_Curve = metrics.roc_auc_score(Y, yhat,average='micro')
-    precision, recall, _ = metrics.precision_recall_curve(Y, yhat)
-    auc_precision_recall = auc(recall, precision)
-    # store the result
-    outer_results.append(acc)
-    outer_results.append(FPR)
-    outer_results.append(TPR)
-    outer_results.append(Precision)
-    outer_results.append(AUC_ROC_Curve)
-    outer_results.append(auc_precision_recall)
-    outer_results.append(training_time)
-    outer_results.append(training_time) #Inference time for 1000 instances
-    # report progress
-    # print('>acc=%.3f, est=%.3f, cfg=%s' % (acc, result.best_score_, result.best_params_))
-# summarize the estimated performance of the model
-# print('Accuracy: %.3f (%.3f)' % (mean(outer_results), std(outer_results)))
+#Calculate metrics
+def get_metrics(x, y):
+    kf = KFold(n_splits=10,shuffle=True)
+    accuracy_lst = []
+    tpr_lst = []
+    fpr_lst = []
+    precision_lst = []
+    auc_roc_curve_lst = []
+    auc_precision_recall_lst = []
+    training_time_lst = []
+    inference_time_lst = []
+    for train_index, test_index in kf.split(x):
+        x_train = [x[i] for i in train_index]
+        x_test = [x[i] for i in test_index]
+        y_train = [y[i] for i in train_index]
+        y_test = [y[i] for i in test_index]
+        gnb = get_best_svm(x_train, y_train)
+        before_train = time.time()
+        gnb.fit(x_train, y_train)
+        after_train = time.time()
+        y_prediction = gnb.predict(x_test)
+        # Calculate accuracy
+        accuracy = metrics.accuracy_score(y_test, y_prediction)
+        accuracy_lst.append(accuracy)
+        # Calculate precision
+        precision = metrics.precision_score(y_test, y_prediction)
+        precision_lst.append(precision)
+        # Calculate TPR,FPR
+        conf = confusion_matrix(y_test, y_prediction)
+        tn = conf[0][0]
+        fn = conf[1][0]
+        tp = conf[1][1]
+        fp = conf[0][1]
+        tpr = tp / (tp + fn)
+        fpr = fp / (fp + tn)
+        tpr_lst.append(tpr)
+        fpr_lst.append(fpr)
 
 
+        # Calculate AUC Precision-Recall
+        fpr, tpr, thresh = metrics.roc_curve(y_test, y_prediction)
+        auc_precision_recall = metrics.auc(fpr, tpr)
+        auc_precision_recall_lst.append(auc_precision_recall)
+        # Calculate AUC ROC Curve
+        auc_roc_curve = metrics.roc_auc_score(y_test, y_prediction)
+        auc_roc_curve_lst.append(auc_roc_curve)
+        # Calculate training time
+        training_time_lst.append(after_train-before_train)
+        # Calculate inference time
+        inference_instances=[]
+        while len(inference_instances)<1000:
+            inference_instances.append(x_test[0])
+        before_infer=time.time()
+        gnb.predict(inference_instances)
+        after_infer=time.time()
+        inference_time_lst.append(after_infer-before_infer)
+    return accuracy_lst,tpr_lst,fpr_lst,precision_lst,auc_roc_curve_lst,auc_precision_recall_lst,training_time_lst,inference_time_lst
+
+def get_svm_results(csv):
+    x, y = get_x_y_lsts(csv)
+    accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = get_metrics(x, y)
+    return accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst
+
+
+def print_svm_results():
+    datasets = ["datasets/"+f for f in listdir("datasets") if isfile(join("datasets", f))]
+    for data in datasets:
+        print('-----------------------' + data + '-----------------------')
+        accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = get_svm_results(data)
+        print("----Accuracy Results----")
+        print(accuracy_lst)
+        print("----Accuracy Mean----")
+        print(statistics.mean(accuracy_lst))
+        print("----Accuracy std----")
+        print(statistics.stdev(accuracy_lst))
+
+        print("###################################################################")
+
+        print("----TPR Results----")
+        print(tpr_lst)
+        print("----TPR Mean----")
+        print(statistics.mean(tpr_lst))
+        print("----TPR std----")
+        print(statistics.stdev(tpr_lst))
+
+        print("###################################################################")
+
+        print("----FPR Results----")
+        print(fpr_lst)
+        print("----FPR Mean----")
+        print(statistics.mean(fpr_lst))
+        print("----FPR std----")
+        print(statistics.stdev(fpr_lst))
+
+        print("###################################################################")
+
+        print("----AUC ROC Curve Results----")
+        print(auc_roc_curve_lst)
+        print("-----AUC ROC Curve  Mean----")
+        print(statistics.mean(auc_roc_curve_lst))
+        print("-----AUC ROC Curve  std----")
+        print(statistics.stdev(auc_roc_curve_lst))
+
+        print("###################################################################")
+
+        print("----AUC Precision-Recall Results----")
+        print(auc_precision_recall_lst)
+        print("----AUC Precision-Recall Mean----")
+        print(statistics.mean(auc_precision_recall_lst))
+        print("----AUC Precision-Recall std----")
+        print(statistics.stdev(auc_precision_recall_lst))
+
+        print("###################################################################")
+
+        print("----Training Time Results----")
+        print(training_time_lst)
+        print("----Training Time Mean----")
+        print(statistics.mean(training_time_lst))
+        print("----Training Time std----")
+        print(statistics.stdev(training_time_lst))
+
+        print("###################################################################")
+
+        print("----Inference Time Results----")
+        print(inference_time_lst)
+        print("----Inference Time Mean----")
+        print(statistics.mean(inference_time_lst))
+        print("----Inference Time std----")
+        print(statistics.stdev(inference_time_lst))
+
+        print("###################################################################")
+
+
+# ________________________________________________________________________________________
+#
+# import functions_module
+# roc_curve_scorer = make_scorer(metrics.roc_curve)
+# average_precision_scorer = make_scorer(metrics.average_precision_score)
+# # roc_auc_score_scorer = make_scorer(metrics.roc_auc_score(multi_class="ovr", average="weighted"))
+# scoring = {"accuracy": "accuracy","precision_micro": "precision_micro","roc_auc_score_ovr": "roc_auc_score_ovr", "roc_curve_ovr": roc_curve_scorer, "average_precision": average_precision_scorer}
+#
+#
+# datasets = ["datasets/"+f for f in listdir("datasets") if isfile(join("datasets", f))]
+# cv_outer = KFold(n_splits=10, shuffle=True)
+# outer_results = list()
+# for data in datasets:
+#     X, Y = get_x_y_lsts(data)
+#     # ---- configure the cross-validation procedure ----
+#     cv_inner = KFold(n_splits=10, shuffle=True, random_state=1)
+#     # ---- define the SVM model ----
+#     # Support Vector Machine algorithms are not scale invariant, so it is highly recommended to scale the data.
+#     # Standardize features by removing the mean and scaling to unit variance.
+#     model = make_pipeline(StandardScaler(), svm.SVC())
+#     # ---- define search parmas for hyperparameter optimization ----
+#     params = dict()
+#     params['svc__C'] = [1, 1.5, 2, 2.5, 3]
+#     params['svc__kernel'] = ["linear", "poly", "rbf", "sigmoid", "precomputed"]
+#     # ---- define search ----
+#     search = RandomizedSearchCV(model, params, scoring=scoring, n_jobs=1, cv=cv_inner, refit='accuracy', random_state=42)
+#     # ---- execute the outer nested cross-validation ----
+#     # scores = cross_validate(search, X, Y, scoring= scoring, cv=cv_outer, n_jobs=-1)
+#     # ---- Training Time metric ----
+#     start = time.time()
+#     # execute search
+#     result = search.fit(X, Y)
+#     stop = time.time()
+#     training_time = stop - start
+#     # get the best performing model fit on the whole training set
+#     best_model = result.best_estimator_
+#     # evaluate model on the hold out dataset
+#     yhat = best_model.predict(X)
+#     # evaluate the model
+#     acc = metrics.accuracy_score(Y, yhat)
+#     FPR, TPR, _ = metrics.roc_curve(Y, yhat)
+#     Precision = metrics.precision_score(Y, yhat,average='micro')
+#     AUC_ROC_Curve = metrics.roc_auc_score(Y, yhat,average='micro')
+#     precision, recall, _ = metrics.precision_recall_curve(Y, yhat)
+#     auc_precision_recall = auc(recall, precision)
+#     # store the result
+#     outer_results.append(acc)
+#     outer_results.append(FPR)
+#     outer_results.append(TPR)
+#     outer_results.append(Precision)
+#     outer_results.append(AUC_ROC_Curve)
+#     outer_results.append(auc_precision_recall)
+#     outer_results.append(training_time)
+#     outer_results.append(training_time) #Inference time for 1000 instances
+#     # report progress
+#     # print('>acc=%.3f, est=%.3f, cfg=%s' % (acc, result.best_score_, result.best_params_))
+# # summarize the estimated performance of the model
+# # print('Accuracy: %.3f (%.3f)' % (mean(outer_results), std(outer_results)))
+#
+#
 
