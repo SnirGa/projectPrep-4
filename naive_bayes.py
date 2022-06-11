@@ -88,77 +88,76 @@ def get_metrics(x, y):
 
 
 
-def get_gnb_results():
-    csvs = ["breast-cancer", "bank", "acute-nephritis", "acute-inflammation", "blood", "breast-cancer-wisc",
-        "breast-cancer-wisc-diag", "congressional-voting", "chess-krvkp", "breast-cancer-wisc-prog"]
-    csvs = ['all_datasets/' + csv + '.csv' for csv in csvs]
-    for csv in csvs:
-        csv_lst = read_csv(csv)
-        print('-----' + csv + '-----')
+def get_gnb_results(csv):
         x, y = get_x_y_lsts(csv)
         accuracy_lst,tpr_lst,fpr_lst,precision_lst,auc_roc_curve_lst,auc_precision_recall_lst,training_time_lst,inference_time_lst=get_metrics(x,y)
         return accuracy_lst,tpr_lst,fpr_lst,precision_lst,auc_roc_curve_lst,auc_precision_recall_lst,training_time_lst,inference_time_lst
-def print_gnb_results():
-    accuracy_lst,tpr_lst,fpr_lst,precision_lst,auc_roc_curve_lst,auc_precision_recall_lst,training_time_lst,inference_time_lst=get_gnb_results()
-    print("----Accuracy Results----")
-    print(accuracy_lst)
-    print("----Accuracy Mean----")
-    print(statistics.mean(accuracy_lst))
-    print("----Accuracy std----")
-    print(statistics.stdev(accuracy_lst))
+def print_gnb_results(csv):
+    # csvs = ["breast-cancer", "bank", "acute-nephritis", "acute-inflammation", "blood", "breast-cancer-wisc",
+    #     "breast-cancer-wisc-diag", "congressional-voting", "chess-krvkp", "breast-cancer-wisc-prog"]
+    # csvs = ['all_datasets/' + csv + '.csv' for csv in csvs]
+    # for csv in csvs:
+        print('-----------------------'+csv+'-----------------------')
+        accuracy_lst,tpr_lst,fpr_lst,precision_lst,auc_roc_curve_lst,auc_precision_recall_lst,training_time_lst,inference_time_lst=get_gnb_results(csv)
+        print("----Accuracy Results----")
+        print(accuracy_lst)
+        print("----Accuracy Mean----")
+        print(statistics.mean(accuracy_lst))
+        print("----Accuracy std----")
+        print(statistics.stdev(accuracy_lst))
 
-    print("###################################################################")
+        print("###################################################################")
 
-    print("----TPR Results----")
-    print(tpr_lst)
-    print("----TPR Mean----")
-    print(statistics.mean(tpr_lst))
-    print("----TPR std----")
-    print(statistics.stdev(tpr_lst))
+        print("----TPR Results----")
+        print(tpr_lst)
+        print("----TPR Mean----")
+        print(statistics.mean(tpr_lst))
+        print("----TPR std----")
+        print(statistics.stdev(tpr_lst))
 
-    print("###################################################################")
+        print("###################################################################")
 
-    print("----FPR Results----")
-    print(fpr_lst)
-    print("----FPR Mean----")
-    print(statistics.mean(fpr_lst))
-    print("----FPR std----")
-    print(statistics.stdev(fpr_lst))
+        print("----FPR Results----")
+        print(fpr_lst)
+        print("----FPR Mean----")
+        print(statistics.mean(fpr_lst))
+        print("----FPR std----")
+        print(statistics.stdev(fpr_lst))
 
-    print("###################################################################")
+        print("###################################################################")
 
-    print("----AUC ROC Curve Results----")
-    print(auc_roc_curve_lst)
-    print("-----AUC ROC Curve  Mean----")
-    print(statistics.mean(auc_roc_curve_lst))
-    print("-----AUC ROC Curve  std----")
-    print(statistics.stdev(auc_roc_curve_lst))
+        print("----AUC ROC Curve Results----")
+        print(auc_roc_curve_lst)
+        print("-----AUC ROC Curve  Mean----")
+        print(statistics.mean(auc_roc_curve_lst))
+        print("-----AUC ROC Curve  std----")
+        print(statistics.stdev(auc_roc_curve_lst))
 
-    print("###################################################################")
+        print("###################################################################")
 
-    print("----AUC Precision-Recall Results----")
-    print(auc_precision_recall_lst)
-    print("----AUC Precision-Recall Mean----")
-    print(statistics.mean(auc_precision_recall_lst))
-    print("----AUC Precision-Recall std----")
-    print(statistics.stdev(auc_precision_recall_lst))
+        print("----AUC Precision-Recall Results----")
+        print(auc_precision_recall_lst)
+        print("----AUC Precision-Recall Mean----")
+        print(statistics.mean(auc_precision_recall_lst))
+        print("----AUC Precision-Recall std----")
+        print(statistics.stdev(auc_precision_recall_lst))
 
-    print("###################################################################")
+        print("###################################################################")
 
-    print("----Training Time Results----")
-    print(training_time_lst)
-    print("----Training Time Mean----")
-    print(statistics.mean(training_time_lst))
-    print("----Training Time std----")
-    print(statistics.stdev(training_time_lst))
+        print("----Training Time Results----")
+        print(training_time_lst)
+        print("----Training Time Mean----")
+        print(statistics.mean(training_time_lst))
+        print("----Training Time std----")
+        print(statistics.stdev(training_time_lst))
 
-    print("###################################################################")
+        print("###################################################################")
 
-    print("----Inference Time Results----")
-    print(inference_time_lst)
-    print("----Inference Time Mean----")
-    print(statistics.mean(inference_time_lst))
-    print("----Inference Time std----")
-    print(statistics.stdev(inference_time_lst))
+        print("----Inference Time Results----")
+        print(inference_time_lst)
+        print("----Inference Time Mean----")
+        print(statistics.mean(inference_time_lst))
+        print("----Inference Time std----")
+        print(statistics.stdev(inference_time_lst))
 
-    print("###################################################################")
+        print("###################################################################")
