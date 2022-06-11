@@ -8,7 +8,7 @@ from numpy import mean
 from numpy import std
 
 #read csv:
-df = pd.read_csv("C:/Users/ronig/Desktop/לימודים/שנה ג/סימסטר ב/סדנת הכנה לפרויקט בהנדסת/עבודה 4/dataSets/arrhythmia.csv", )
+df = pd.read_csv("C:/Users/ronig/Desktop/לימודים/שנה ג/סימסטר ב/סדנת הכנה לפרויקט בהנדסת/עבודה 4/dataSets/chess-krvkp.csv", )
 X = df.drop("clase",axis=1).to_numpy()  #Feature Matrix
 y = df["clase"].to_numpy()       #Target Variable
 # print(X)
