@@ -1,13 +1,18 @@
 import statistics
+
 from sklearn.metrics import confusion_matrix
-from sklearn.neighbors import (NeighborhoodComponentsAnalysis, KNeighborsClassifier)
-from sklearn.model_selection import cross_val_score, KFold, RandomizedSearchCV
+from os import listdir
+from os.path import isfile, join
+from sklearn.neighbors import (KNeighborsClassifier)
+from sklearn.model_selection import KFold, RandomizedSearchCV
 from sklearn import metrics
 import time
-from functions_module import get_XY_from_csv, get_x_y_lsts
 
 #first,before the start of learning process, we will define the hyperparameter of the model:
 #We will use 2 hyperparamters: n-neighbors and weights
+from functions_module import get_XY_from_csv
+
+
 def get_knn_hyper_parameters(x, y):
     knn = KNeighborsClassifier()
     k_range = list(range(1, 31))
@@ -44,12 +49,11 @@ def get_metrics(x, y):
         x_test = [x[i] for i in test_index]
         y_train = [y[i] for i in train_index]
         y_test = [y[i] for i in test_index]
-        best_knn = get_best_knn(x, y)
+        best_knn = get_best_knn(x_train, y_train)
         before_train = time.time()
         best_knn.fit(x_train,y_train)
         after_train = time.time()
         y_prediction = best_knn.predict(x_test)
-
         #calc metrics :
         #Accuracy:
         accuracy = metrics.accuracy_score(y_test, y_prediction)
@@ -91,59 +95,57 @@ def get_metrics(x, y):
 
 
 def print_knn_results():
-    csvPaths = ["breast-cancer", "bank", "acute-nephritis", "acute-inflammation", "blood", "breast-cancer-wisc",
-            "breast-cancer-wisc-diag", "congressional-voting", "chess-krvkp", "breast-cancer-wisc-prog"]
-    # csvPaths = ["breast-cancer"]
-    csvPaths = ['all_datasets/' + csvPath + '.csv' for csvPath in csvPaths]
-    for csvPath in csvPaths :
-        x, y = get_XY_from_csv(csvPath)
+    datasets = ["datasets/" + f for f in listdir("datasets") if isfile(join("datasets", f))]
+    for data_csv in datasets :
+        print('-----------------------' + data_csv + '-----------------------')
+        x, y = get_XY_from_csv(data_csv)
         accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = get_metrics(x, y)
-    print("----Accuracy Results----")
-    print(accuracy_lst)
-    print("----Accuracy Mean----")
-    print(statistics.mean(accuracy_lst))
-    print("----Accuracy std----")
-    print(statistics.stdev(accuracy_lst))
-    print("###################################################################")
-    print("----TPR Results----")
-    print(tpr_lst)
-    print("----TPR Mean----")
-    print(statistics.mean(tpr_lst))
-    print("----TPR std----")
-    print(statistics.stdev(tpr_lst))
-    print("###################################################################")
-    print("----FPR Results----")
-    print(fpr_lst)
-    print("----FPR Mean----")
-    print(statistics.mean(fpr_lst))
-    print("----FPR std----")
-    print(statistics.stdev(fpr_lst))
-    print("###################################################################")
-    print("----AUC ROC Curve Results----")
-    print(auc_roc_curve_lst)
-    print("-----AUC ROC Curve  Mean----")
-    print(statistics.mean(auc_roc_curve_lst))
-    print("-----AUC ROC Curve  std----")
-    print(statistics.stdev(auc_roc_curve_lst))
-    print("###################################################################")
-    print("----AUC Precision-Recall Results----")
-    print(auc_precision_recall_lst)
-    print("----AUC Precision-Recall Mean----")
-    print(statistics.mean(auc_precision_recall_lst))
-    print("----AUC Precision-Recall std----")
-    print(statistics.stdev(auc_precision_recall_lst))
-    print("###################################################################")
-    print("----Training Time Results----")
-    print(training_time_lst)
-    print("----Training Time Mean----")
-    print(statistics.mean(training_time_lst))
-    print("----Training Time std----")
-    print(statistics.stdev(training_time_lst))
-    print("###################################################################")
-    print("----Inference Time Results----")
-    print(inference_time_lst)
-    print("----Inference Time Mean----")
-    print(statistics.mean(inference_time_lst))
-    print("----Inference Time std----")
-    print(statistics.stdev(inference_time_lst))
-    print("###################################################################")
+        print("----Accuracy Results----")
+        print(accuracy_lst)
+        print("----Accuracy Mean----")
+        print(statistics.mean(accuracy_lst))
+        print("----Accuracy std----")
+        print(statistics.stdev(accuracy_lst))
+        print("###################################################################")
+        print("----TPR Results----")
+        print(tpr_lst)
+        print("----TPR Mean----")
+        print(statistics.mean(tpr_lst))
+        print("----TPR std----")
+        print(statistics.stdev(tpr_lst))
+        print("###################################################################")
+        print("----FPR Results----")
+        print(fpr_lst)
+        print("----FPR Mean----")
+        print(statistics.mean(fpr_lst))
+        print("----FPR std----")
+        print(statistics.stdev(fpr_lst))
+        print("###################################################################")
+        print("----AUC ROC Curve Results----")
+        print(auc_roc_curve_lst)
+        print("-----AUC ROC Curve  Mean----")
+        print(statistics.mean(auc_roc_curve_lst))
+        print("-----AUC ROC Curve  std----")
+        print(statistics.stdev(auc_roc_curve_lst))
+        print("###################################################################")
+        print("----AUC Precision-Recall Results----")
+        print(auc_precision_recall_lst)
+        print("----AUC Precision-Recall Mean----")
+        print(statistics.mean(auc_precision_recall_lst))
+        print("----AUC Precision-Recall std----")
+        print(statistics.stdev(auc_precision_recall_lst))
+        print("###################################################################")
+        print("----Training Time Results----")
+        print(training_time_lst)
+        print("----Training Time Mean----")
+        print(statistics.mean(training_time_lst))
+        print("----Training Time std----")
+        print(statistics.stdev(training_time_lst))
+        print("###################################################################")
+        print("----Inference Time Results----")
+        print(inference_time_lst)
+        print("----Inference Time Mean----")
+        print(statistics.mean(inference_time_lst))
+        print("----Inference Time std----")
+        print(statistics.stdev(inference_time_lst))
+        print("###################################################################")
