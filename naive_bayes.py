@@ -11,7 +11,7 @@ from functions_module import get_csvs, read_csv, get_x_y_lsts
 
 def get_gnb_hyper_parameters(x, y):
     gnb = GaussianNB()
-    params_NB = {'var_smoothing': np.logspace(0, -9, num=100)}
+    params_NB = {'var_smoothing': np.logspace(0, -9, num=100),'priors':[[1-x/100,x/100] for x in range(1,100)]}
     rand_search = RandomizedSearchCV(gnb, params_NB, cv=3)
     results = rand_search.fit(x, y)
     return results.best_params_
@@ -19,7 +19,7 @@ def get_gnb_hyper_parameters(x, y):
 
 def get_best_gnb(x, y):
     hyper_parameters = get_gnb_hyper_parameters(x, y)
-    gnb = GaussianNB(var_smoothing=hyper_parameters.get("var_smoothing"))
+    gnb = GaussianNB(var_smoothing=hyper_parameters.get("var_smoothing"),priors=hyper_parameters.get("priors"))
     return gnb
 
 
@@ -43,7 +43,7 @@ def get_metrics(x, y):
         x_test = [x[i] for i in test_index]
         y_train = [y[i] for i in train_index]
         y_test = [y[i] for i in test_index]
-        gnb = get_best_gnb(x, y)
+        gnb = get_best_gnb(x_train, y_train)
         before_train = time.time()
         gnb.fit(x_train, y_train)
         after_train = time.time()
