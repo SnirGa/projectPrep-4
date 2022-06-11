@@ -22,3 +22,9 @@ def get_x_y_lsts(dataset_path):
 
 def get_csvs():
     return ['datasets/'+x for x in os.listdir('datasets')]
+
+def get_XY_from_csv(csvPath):
+    df = pd.read_csv(csvPath, sep=",")
+    X = df.drop("clase", axis=1).to_numpy()  # Feature Matrix
+    y = df["clase"].to_numpy()  # Target Variable
+    return X, y

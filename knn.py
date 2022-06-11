@@ -1,75 +1,149 @@
-from sklearn.ensemble import RandomForestClassifier
+import statistics
+from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import (NeighborhoodComponentsAnalysis, KNeighborsClassifier)
-from sklearn.model_selection import cross_val_score, KFold
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.model_selection import GridSearchCV
-from numpy import mean
-from numpy import std
+from sklearn.model_selection import cross_val_score, KFold, RandomizedSearchCV
+from sklearn import metrics
+import time
+from functions_module import get_XY_from_csv, get_x_y_lsts
 
-#read csv:
-df = pd.read_csv("C:/Users/ronig/Desktop/לימודים/שנה ג/סימסטר ב/סדנת הכנה לפרויקט בהנדסת/עבודה 4/dataSets/arrhythmia.csv", )
-X = df.drop("clase",axis=1).to_numpy()  #Feature Matrix
-y = df["clase"].to_numpy()       #Target Variable
-# print(X)
-# print(y)
+#first,before the start of learning process, we will define the hyperparameter of the model:
+#We will use 2 hyperparamters: n-neighbors and weights
+def get_knn_hyper_parameters(x, y):
+    knn = KNeighborsClassifier()
+    k_range = list(range(1, 31))
+    weight_options = ['uniform', 'distance']
+    # create a parameter grid: map the parameter names to the values that should be searched
+    # dictionary = dict(key=values, key=values)
+    param_grid_knn = dict(n_neighbors=k_range, weights=weight_options)
+    rand_search = RandomizedSearchCV(knn, param_grid_knn, cv=3)
+    results = rand_search.fit(x, y)
+    return results.best_params_
 
-#https://machinelearningmastery.com/nested-cross-validation-for-machine-learning-with-python/
-# configure the cross-validation procedure
-cv_inner = KFold(n_splits=3, shuffle=True, random_state=1)
-# define the model
-model = RandomForestClassifier(random_state=1)
-# define search space
-space = dict()
-space['n_estimators'] = [10, 100, 500]
-space['max_features'] = [2, 4, 6]
-# define search
-search = GridSearchCV(model, space, scoring='accuracy', n_jobs=1, cv=cv_inner, refit=True)
-# configure the cross-validation procedure
-cv_outer = KFold(n_splits=10, shuffle=True, random_state=1)
-# execute the nested cross-validation
-scores = cross_val_score(search, X, y, scoring='accuracy', cv=cv_outer, n_jobs=-1)
-# report performance
-print('Accuracy: %.3f (%.3f)' % (mean(scores), std(scores)))
+def get_best_knn(x, y):
+    hyper_parameters = get_knn_hyper_parameters(x, y)
+    n_neighbors = hyper_parameters.get("n_neighbors")
+    weights = hyper_parameters.get("weights")
+    best_knn = KNeighborsClassifier(n_neighbors, weights)
+    return best_knn
 
-#
-# # choose k between 1 to 31
-# k_range = range(0, 15)
-# k_scores = []
-# # use iteration to caclulator different k in models, then return the average accuracy based on the cross validation
-# for k in k_range:
-#     knn = KNeighborsClassifier(n_neighbors=k)
-#     scores = cross_val_score(knn, X, y, cv=10, scoring='accuracy')
-#     k_scores.append(scores.mean())
-# # plot to see clearly
-# plt.plot(k_range, k_scores)
-# plt.xlabel('Value of K for KNN')
-# plt.ylabel('Cross-Validated Accuracy')
-# plt.show()
-#
-# # Use neg_mean_squared_error for scoring(good for regression)
-# k_range = range(0, 15)
-# k_scores = []
-# for k in k_range:
-#     knn = KNeighborsClassifier(n_neighbors=k)
-#     loss = abs(cross_val_score(knn, X, y, cv=10, scoring='neg_mean_squared_error'))
-#     k_scores.append(loss.mean())
-# plt.plot(k_range, k_scores)
-# plt.xlabel('Value of K for KNN')
-# plt.ylabel('Cross-Validated MSE')
-# plt.show()
-#
-#
-# #we see that the best point in that range is : 3
-# print("-----------------------------------n_neighbors = 3-----------------------------------")
-#
-# knn = KNeighborsClassifier(n_neighbors = 3)
-# # X,y will automatically devided by 10 folder, the scoring I will still use the accuracy
-# scores = cross_val_score(knn, X, y, cv=10, scoring='accuracy')
-# # print all 10 times scores
-# # print(scores)
-# #scores = [0.63043478 0.60869565 0.57777778 0.57777778 0.6 0.55555556 0.57777778 0.57777778 0.62222222 0.64444444]
-# # then I will do the average about these 10 scores to get more accuracy score.
-# # print(scores.mean())
-# #scores.mean() = 0.5972463768115943
-#
+def get_metrics(x, y):
+    kf = KFold(n_splits=10,shuffle=True)
+    accuracy_lst = []
+    precision_lst = []
+    tpr_lst = []
+    fpr_lst = []
+    auc_precision_recall_lst = []
+    auc_roc_curve_lst = []
+    training_time_lst = []
+    inference_time_lst = []
+    tpr_lst_to_check = []
+    fpr_lst_to_check = []
+
+    for train_index, test_index in kf.split(x):
+        x_train = [x[i] for i in train_index]
+        x_test = [x[i] for i in test_index]
+        y_train = [y[i] for i in train_index]
+        y_test = [y[i] for i in test_index]
+        best_knn = get_best_knn(x, y)
+        before_train = time.time()
+        best_knn.fit(x_train,y_train)
+        after_train = time.time()
+        y_prediction = best_knn.predict(x_test)
+
+        #calc metrics :
+        #Accuracy:
+        accuracy = metrics.accuracy_score(y_test, y_prediction)
+        accuracy_lst.append(accuracy)
+        # Calculate precision
+        precision = metrics.precision_score(y_test, y_prediction)
+        precision_lst.append(precision)
+        #TPR,FPR:
+        conf = confusion_matrix(y_test, y_prediction)
+        tn = conf[0][0]
+        fn = conf[1][0]
+        tp = conf[1][1]
+        fp = conf[0][1]
+        tpr = tp / (tp + fn)
+        fpr = fp / (fp + tn)
+        tpr_lst.append(tpr)
+        fpr_lst.append(fpr)
+        #AUC:
+        fpr, tpr, thresholds = metrics.roc_curve(y_test, y_prediction)
+        tpr_lst_to_check.append(tpr.tolist())
+        fpr_lst_to_check.append(fpr.tolist())
+            #AUC Precision-Recall
+        auc_precision_recall = metrics.auc(fpr, tpr)
+        auc_precision_recall_lst.append(auc_precision_recall)
+            #AUC ROC Curve
+        auc_roc_curve = metrics.roc_auc_score(y_test, y_prediction)
+        auc_roc_curve_lst.append(auc_roc_curve)
+        #Training time
+        training_time_lst.append(after_train-before_train)
+        #Inference time_1000_instances
+        inference_instances = []
+        while len(inference_instances)<1000:
+            inference_instances.append(x_test[0])
+        before_infer=time.time()
+        best_knn.predict(inference_instances)
+        after_infer=time.time()
+        inference_time_lst.append(after_infer-before_infer)
+    return accuracy_lst,tpr_lst,fpr_lst,precision_lst,auc_roc_curve_lst,auc_precision_recall_lst,training_time_lst,inference_time_lst
+
+
+def print_knn_results():
+    csvPaths = ["breast-cancer", "bank", "acute-nephritis", "acute-inflammation", "blood", "breast-cancer-wisc",
+            "breast-cancer-wisc-diag", "congressional-voting", "chess-krvkp", "breast-cancer-wisc-prog"]
+    # csvPaths = ["breast-cancer"]
+    csvPaths = ['all_datasets/' + csvPath + '.csv' for csvPath in csvPaths]
+    for csvPath in csvPaths :
+        x, y = get_XY_from_csv(csvPath)
+        accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = get_metrics(x, y)
+    print("----Accuracy Results----")
+    print(accuracy_lst)
+    print("----Accuracy Mean----")
+    print(statistics.mean(accuracy_lst))
+    print("----Accuracy std----")
+    print(statistics.stdev(accuracy_lst))
+    print("###################################################################")
+    print("----TPR Results----")
+    print(tpr_lst)
+    print("----TPR Mean----")
+    print(statistics.mean(tpr_lst))
+    print("----TPR std----")
+    print(statistics.stdev(tpr_lst))
+    print("###################################################################")
+    print("----FPR Results----")
+    print(fpr_lst)
+    print("----FPR Mean----")
+    print(statistics.mean(fpr_lst))
+    print("----FPR std----")
+    print(statistics.stdev(fpr_lst))
+    print("###################################################################")
+    print("----AUC ROC Curve Results----")
+    print(auc_roc_curve_lst)
+    print("-----AUC ROC Curve  Mean----")
+    print(statistics.mean(auc_roc_curve_lst))
+    print("-----AUC ROC Curve  std----")
+    print(statistics.stdev(auc_roc_curve_lst))
+    print("###################################################################")
+    print("----AUC Precision-Recall Results----")
+    print(auc_precision_recall_lst)
+    print("----AUC Precision-Recall Mean----")
+    print(statistics.mean(auc_precision_recall_lst))
+    print("----AUC Precision-Recall std----")
+    print(statistics.stdev(auc_precision_recall_lst))
+    print("###################################################################")
+    print("----Training Time Results----")
+    print(training_time_lst)
+    print("----Training Time Mean----")
+    print(statistics.mean(training_time_lst))
+    print("----Training Time std----")
+    print(statistics.stdev(training_time_lst))
+    print("###################################################################")
+    print("----Inference Time Results----")
+    print(inference_time_lst)
+    print("----Inference Time Mean----")
+    print(statistics.mean(inference_time_lst))
+    print("----Inference Time std----")
+    print(statistics.stdev(inference_time_lst))
+    print("###################################################################")
