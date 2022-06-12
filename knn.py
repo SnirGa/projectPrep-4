@@ -28,7 +28,7 @@ def get_best_knn(x, y):
     hyper_parameters = get_knn_hyper_parameters(x, y)
     n_neighbors = hyper_parameters.get("n_neighbors")
     weights = hyper_parameters.get("weights")
-    best_knn = KNeighborsClassifier(n_neighbors, weights)
+    best_knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)
     return best_knn
 
 def get_metrics(x, y):
