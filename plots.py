@@ -4,6 +4,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
+import ann
+import knn
+import random_forest
+import svm
+from knn import get_metrics
 from naive_bayes import get_gnb_results
 
 sns.set()
@@ -15,13 +20,16 @@ def get_statistics_results(model,csv):
     if model == 'nb':
         accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = get_gnb_results(csv)
     elif model == 'knn':
-        pass
+        accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = knn.get_metrics_updated(csv)
     elif model=='rf':
-        pass
+        accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = random_forest.get_metrics(
+            csv)
     elif model=='ann':
-        pass
+        accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = ann.get_ann_results(csv)
     elif model=='svm':
-        pass
+        accuracy_lst, tpr_lst, fpr_lst, precision_lst, auc_roc_curve_lst, auc_precision_recall_lst, training_time_lst, inference_time_lst = svm.get_metrics(
+            csv)
+
     mean_row = [model,statistics.mean(accuracy_lst), statistics.mean(tpr_lst), statistics.mean(fpr_lst),
                 statistics.mean(precision_lst), statistics.mean(auc_roc_curve_lst),
                 statistics.mean(auc_precision_recall_lst), statistics.mean(training_time_lst),
@@ -38,10 +46,10 @@ def get_graph(flag,csv):
     #flag- mean | std
     #TODO: change the parameters to the right ones
     nb_mean_row, nb_std_row = get_statistics_results('nb',csv)
-    knn_mean_row,knn_std_row=get_statistics_results('nb',csv)
-    rf_mean_row,rf_std_row=get_statistics_results('nb',csv)
-    ann_mean_row,ann_std_row=get_statistics_results('nb',csv)
-    svm_mean_row,svm_std_row=get_statistics_results('nb',csv)
+    knn_mean_row,knn_std_row=get_statistics_results('knn',csv)
+    rf_mean_row,rf_std_row=get_statistics_results('rf',csv)
+    ann_mean_row,ann_std_row=get_statistics_results('ann',csv)
+    svm_mean_row,svm_std_row=get_statistics_results('svm',csv)
 
     knn_mean_row[0]='knn'
     rf_mean_row[0]='rf'
@@ -58,17 +66,18 @@ def get_graph(flag,csv):
     ax.legend(bbox_to_anchor=(1.1, 1.05))
     plt.show()
 #get_graph('mean','all_datasets/breast-cancer.csv')
-nb_mean_row, nb_std_row = get_statistics_results('nb','all_datasets/breast-cancer.csv')
-knn_mean_row,knn_std_row=get_statistics_results('nb','all_datasets/breast-cancer.csv')
-rf_mean_row,rf_std_row=get_statistics_results('nb','all_datasets/breast-cancer.csv')
-ann_mean_row,ann_std_row=get_statistics_results('nb','all_datasets/breast-cancer.csv')
-svm_mean_row,svm_std_row=get_statistics_results('nb','all_datasets/breast-cancer.csv')
+
+nb_mean_row, nb_std_row = get_statistics_results('nb','datasets/breast-cancer.csv')
+knn_mean_row,knn_std_row=get_statistics_results('knn','datasets/breast-cancer.csv')
+rf_mean_row,rf_std_row=get_statistics_results('rf','datasets/breast-cancer.csv')
+ann_mean_row,ann_std_row=get_statistics_results('ann','datasets/breast-cancer.csv')
+svm_mean_row,svm_std_row=get_statistics_results('svm','datasets/breast-cancer.csv')
 try_dict={
     'method':['model','accuracy','tpr','fpr','precision','auc_roc_curve','auc_precision_recall','training_time','inference_time'],
     'nb':nb_mean_row,
     'knn':knn_mean_row,
     'rf':rf_mean_row,
-    'ann':ann_mean_row,
+    #'ann':ann_mean_row,
     'svm':svm_mean_row
 }
 df2=pd.DataFrame(try_dict,index=['model','accuracy','tpr','fpr','precision','auc_roc_curve','auc_precision_recall','training_time','inference_time'])
