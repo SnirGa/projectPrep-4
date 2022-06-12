@@ -4,9 +4,9 @@ from sklearn import metrics
 from sklearn.model_selection import RandomizedSearchCV, KFold, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
-
 from functions_module import get_csvs, read_csv, get_x_y_lsts
 
+#get hyperparameters of the model
 def get_rf_hyper_parameters(x, y):
     rf = RandomForestClassifier()
     params_RF = dict()
@@ -16,12 +16,13 @@ def get_rf_hyper_parameters(x, y):
     results = rand_search.fit(x, y)
     return results.best_params_
 
+#get the best model of the RF to fit
 def get_best_rf(x, y):
     hyper_parameters = get_rf_hyper_parameters(x, y)
     rf = RandomForestClassifier(bootstrap=hyper_parameters.get("bootstrap"), max_features=hyper_parameters.get("max_features"))
     return rf
 
-
+#Calculate metrics
 def get_metrics(x, y):
     kf = KFold(n_splits=10, shuffle=True)
     accuracy_lst = []
